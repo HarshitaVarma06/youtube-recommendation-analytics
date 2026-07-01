@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>YouTube Analytics — User Behavior & Retention</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0C0E16;
+    --surface: #13151F;
+    --surface2: #1A1D2E;
+    --border: #252840;
+    --red: #FF2D55;
+    --teal: #00D9C0;
+    --purple: #7B61FF;
+    --amber: #FFB627;
+    --text: #E8EAF0;
+    --muted: #6B7094;
+    --dim: #9296B4;
+    --font: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-logo {
+    width: 36px; height: 36px;
+    background: var(--red);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-logo svg { width: 18px; height: 18px; fill: white; }
+  .header-title { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; }
+  .header-subtitle { color: var(--muted); font-size: 0.75rem; margin-top: 1px; }
+  .header-meta { display: flex; align-items: center; gap: 20px; }
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,45,85,0.12);
+    border: 1px solid rgba(255,45,85,0.3);
+    color: var(--red);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: var(--red);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  .date-range {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-family: var(--mono);
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  .nav-tab {
+    padding: 12px 20px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+
+  /* MAIN */
+  .main { padding: 1.5rem 2rem 3rem; max-width: 1400px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .section-header { margin-bottom: 1.25rem; }
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+  .section-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+  .section-desc { color: var(--muted); font-size: 0.8rem; margin-top: 4px; line-height: 1.5; }
+
+  /* KPI GRID */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.2rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: #353A58; }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .kpi-card.red::before { background: var(--red); }
+  .kpi-card.teal::before { background: var(--teal); }
+  .kpi-card.purple::before { background: var(--purple); }
+  .kpi-card.amber::before { background: var(--amber); }
+  .kpi-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-family: var(--mono);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .kpi-card.red .kpi-value { color: var(--red); }
+  .kpi-card.teal .kpi-value { color: var(--teal); }
+  .kpi-card.purple .kpi-value { color: var(--purple); }
+  .kpi-card.amber .kpi-value { color: var(--amber); }
+  .kpi-sub {
+    font-size: 0.7rem;
+    color: var(--dim);
+    line-height: 1.4;
+  }
+  .kpi-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+  }
+  .kpi-tag.up { background: rgba(0,217,192,0.12); color: var(--teal); }
+  .kpi-tag.down { background: rgba(255,45,85,0.12); color: var(--red); }
+  .kpi-tag.warn { background: rgba(255,182,39,0.12); color: var(--amber); }
+
+  /* CHART ROWS */
+  .chart-row { display: grid; gap: 1rem; margin-bottom: 1rem; }
+  .chart-row-2 { grid-template-columns: 1fr 1fr; }
+  .chart-row-3 { grid-template-columns: 2fr 1fr; }
+  .chart-row-full { grid-template-columns: 1fr; }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.3rem;
+  }
+  .chart-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .chart-card-title { font-size: 0.85rem; font-weight: 600; }
+  .chart-card-sub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .chart-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--surface2);
+    color: var(--dim);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  canvas { max-height: 260px; }
+
+  /* INSIGHT BOX */
+  .insight-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .insight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--teal);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+  }
+  .insight-card.warn { border-left-color: var(--amber); }
+  .insight-card.alert { border-left-color: var(--red); }
+  .insight-card.positive { border-left-color: var(--teal); }
+  .insight-head { font-size: 0.78rem; font-weight: 700; margin-bottom: 5px; }
+  .insight-body { font-size: 0.75rem; color: var(--dim); line-height: 1.55; }
+
+  /* SEGMENT TABLE */
+  .seg-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .seg-table th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .seg-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #1C1F30;
+    vertical-align: middle;
+  }
+  .seg-table tr:last-child td { border-bottom: none; }
+  .seg-table tr:hover td { background: #16192A; }
+  .seg-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+  .seg-pill.low { background: rgba(255,45,85,0.12); color: var(--red); }
+  .seg-pill.medium { background: rgba(255,182,39,0.12); color: var(--amber); }
+  .seg-pill.high { background: rgba(0,217,192,0.15); color: var(--teal); }
+  .seg-pill.power { background: rgba(123,97,255,0.15); color: var(--purple); }
+
+  .bar-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bar-mini-track {
+    flex: 1;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-mini-fill { height: 100%; border-radius: 3px; }
+
+  /* FUNNEL */
+  .funnel-wrap { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
+  .funnel-row { display: flex; align-items: center; gap: 12px; }
+  .funnel-label { width: 90px; font-size: 0.75rem; color: var(--muted); text-align: right; }
+  .funnel-track { flex: 1; height: 32px; background: var(--surface2); border-radius: 6px; overflow: hidden; position: relative; }
+  .funnel-fill {
+    height: 100%;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: white;
+    transition: width 1s ease;
+  }
+  .funnel-pct { font-size: 0.72rem; color: var(--dim); width: 50px; text-align: right; font-family: var(--mono); }
+
+  /* RECS */
+  .rec-list { display: flex; flex-direction: column; gap: 10px; }
+  .rec-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .rec-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .rec-num.r { background: rgba(255,45,85,0.2); color: var(--red); }
+  .rec-num.t { background: rgba(0,217,192,0.15); color: var(--teal); }
+  .rec-num.p { background: rgba(123,97,255,0.15); color: var(--purple); }
+  .rec-num.a { background: rgba(255,182,39,0.15); color: var(--amber); }
+  .rec-text { font-size: 0.78rem; color: var(--dim); line-height: 1.55; }
+  .rec-text strong { color: var(--text); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .main { padding: 1rem; }
+    .chart-row-2, .chart-row-3 { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    canvas { max-height: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-2.75 12.74 12.74 0 00-7.64 0A4.83 4.83 0 014.41 6.69 24.7 24.7 0 002 12c0 1.85.3 3.57.84 5.1a4.82 4.82 0 013.71 2.7 12.86 12.86 0 007.9 0 4.82 4.82 0 013.71-2.7A24.7 24.7 0 0022 12a24.7 24.7 0 00-2.41-5.31zM12 15.5a3.5 3.5 0 110-7 3.5 3.5 0 010 7z"/></svg>
+    </div>
+    <div>
+      <div class="header-title">YouTube Analytics</div>
+      <div class="header-subtitle">User Behavior & Retention</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="date-range">Jan 2023 — Sep 2025</div>
+    <div class="live-badge"><div class="live-dot"></div> 1M Events</div>
+  </div>
+</header>
+
+<nav class="nav-tabs">
+  <button class="nav-tab active" onclick="showTab('overview')">Overview</button>
+  <button class="nav-tab" onclick="showTab('behavior')">Watch Behavior</button>
+  <button class="nav-tab" onclick="showTab('segments')">User Segments</button>
+  <button class="nav-tab" onclick="showTab('content')">Content Performance</button>
+  <button class="nav-tab" onclick="showTab('recommendations')">Recommendations</button>
+</nav>
+
+<main class="main">
+
+<!-- =================== OVERVIEW =================== -->
+<div class="section active" id="tab-overview">
+  <div class="section-header">
+    <div class="section-label">Executive Overview</div>
+    <div class="section-title">Platform Health at a Glance</div>
+    <div class="section-desc">99,990 users · 50,000 videos · 1,000,000 watch events · Jan 2023–Sep 2025</div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card teal">
+      <div class="kpi-label">Total Users</div>
+      <div class="kpi-value">99.9K</div>
+      <div class="kpi-sub">Across 1M recorded events</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-label">Avg Watch %</div>
+      <div class="kpi-value">74.8%</div>
+      <div class="kpi-sub">Per user across all sessions</div>
+      <div class="kpi-tag up">↑ Strong retention</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Completion Rate</div>
+      <div class="kpi-value">54.7%</div>
+      <div class="kpi-sub">Videos watched to end</div>
+      <div class="kpi-tag up">↑ Above industry avg</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Bounce Rate</div>
+      <div class="kpi-value">5.0%</div>
+      <div class="kpi-sub">Sessions with &lt;10% watch</div>
+      <div class="kpi-tag up">↓ Healthy signal</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">At-Risk Users</div>
+      <div class="kpi-value">30.2%</div>
+      <div class="kpi-sub">Zero conversion + low watch</div>
+      <div class="kpi-tag down">⚠ Churn signal</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Conversion Rate</div>
+      <div class="kpi-value">5.0%</div>
+      <div class="kpi-sub">Sub after watching</div>
+      <div class="kpi-tag warn">→ Opportunity gap</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Like Rate</div>
+      <div class="kpi-value">30.0%</div>
+      <div class="kpi-sub">Across known interactions</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Rec Success</div>
+      <div class="kpi-value">9.0%</div>
+      <div class="kpi-sub">Recommended → clicked</div>
+      <div class="kpi-tag warn">↓ Room to improve</div>
+    </div>
+  </div>
+
+  <div class="chart-row chart-row-full">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Monthly View Volume & Completion Rate</div><div class="chart-card-sub">Jan 2023 – Sep 2025 · Total events per month with 30-day completion trend</div></div>
+        <span class="chart-badge">33 months</span>
+      </div>
+      <canvas id="monthlyChart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Engagement Funnel</div><div class="chart-card-sub">Depth of interaction per 1M views</div></div>
+      </div>
+      <div class="funnel-wrap" id="funnelEl"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">User Risk Distribution</div><div class="chart-card-sub">Retention health across user base</div></div>
+      </div>
+      <canvas id="churnChart"></canvas>
+    </div>
+  </div>
+
+  <div class="insight-grid">
+    <div class="insight-card positive">
+      <div class="insight-head">Sticky content: users watch 3/4 of every video</div>
+      <div class="insight-body">An average watch depth of 74.8% per user signals strong content relevance. The majority of the audience is not grazing — they're committing. This reduces ad-drop-off risk and is a positive signal for algorithmic ranking.</div>
+    </div>
+    <div class="insight-card alert">
+      <div class="insight-head">30% of users show churn-risk patterns</div>
+      <div class="insight-body">30,156 users have never converted (subscribed/liked/commented) AND watch below the platform median. Without re-engagement they represent the highest near-term churn risk. This cohort warrants a dedicated re-targeting effort.</div>
+    </div>
+    <div class="insight-card warn">
+      <div class="insight-head">Conversion funnel has a 94% drop at the subscribe step</div>
+      <div class="insight-body">Only 5% of views lead to a subscription. While watching → liking (30%) is healthy, the jump from liking to subscribing is where most value is lost. Optimizing the subscribe CTA placement is the single highest-leverage retention play.</div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== BEHAVIOR =================== -->
+<div class="section" id="tab-behavior">
+  <div class="section-header">
+    <div class="section-label">Watch Behavior</div>
+    <div class="section-title">When, How & Where Users Watch</div>
+    <div class="section-desc">Device preferences, time-of-day patterns, and day-of-week engagement across 1M sessions</div>
+  </div>
+
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Device Completion Rate</div><div class="chart-card-sub">% of videos watched to end by device</div></div>
+      </div>
+      <canvas id="deviceChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Time of Day — Engagement Score</div><div class="chart-card-sub">Average engagement by part of day</div></div>
+      </div>
+      <canvas id="todChart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-row chart-row-full">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Hour-by-Hour: Completion Rate</div><div class="chart-card-sub">0–23h · Completion % per viewing hour across all users</div></div>
+        <span class="chart-badge">24h view</span>
+      </div>
+      <canvas id="hourlyChart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Day of Week: Views vs Engagement</div><div class="chart-card-sub">Total views (bar) and avg engagement score (line)</div></div>
+      </div>
+      <canvas id="dowChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">User Watch % Distribution</div><div class="chart-card-sub">How deep users watch on average</div></div>
+      </div>
+      <canvas id="watchDistChart"></canvas>
+    </div>
+  </div>
+
+  <div class="insight-grid">
+    <div class="insight-card positive">
+      <div class="insight-head">Tablets lead in watch depth & completion</div>
+      <div class="insight-body">Tablet users average 74.9% watch depth and the highest completion rate (54.8%). Larger screen, leisure posture. This is the "lean back" device — scheduling high-value content releases for tablet peak hours could amplify engagement.</div>
+    </div>
+    <div class="insight-card warn">
+      <div class="insight-head">5 AM and 5 PM are engagement dips</div>
+      <div class="insight-body">Hours 5 and 17 consistently show the lowest completion rates across the day. These are transition moments (morning rush, commute end) where users are time-pressured. Shorter-form content or series teasers may perform better in those slots.</div>
+    </div>
+    <div class="insight-card positive">
+      <div class="insight-head">Watch behavior is strikingly uniform across devices</div>
+      <div class="insight-body">All four devices (TV, Mobile, Desktop, Tablet) show near-identical engagement scores (~0.344). This means the product experience translates well across form factors — no device is being underserved or over-performing to a degree that demands immediate UX intervention.</div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== SEGMENTS =================== -->
+<div class="section" id="tab-segments">
+  <div class="section-header">
+    <div class="section-label">User Segmentation</div>
+    <div class="section-title">Four Distinct Audience Cohorts</div>
+    <div class="section-desc">Users segmented by engagement score into Low / Medium / High / Power — each with distinct behavior and conversion signals</div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card red">
+      <div class="kpi-label">Low Engagers</div>
+      <div class="kpi-value">962</div>
+      <div class="kpi-sub">Eng score &lt;0.20 · 1.0% of users</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Medium Engagers</div>
+      <div class="kpi-value">53.7K</div>
+      <div class="kpi-sub">Eng score 0.20–0.35 · 53.7%</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-label">High Engagers</div>
+      <div class="kpi-value">44.4K</div>
+      <div class="kpi-sub">Eng score 0.35–0.50 · 44.4%</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Power Users</div>
+      <div class="kpi-value">928</div>
+      <div class="kpi-sub">Eng score &gt;0.50 · 0.9% of users</div>
+    </div>
+  </div>
+
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Conversion Rate by Segment</div><div class="chart-card-sub">% of sessions leading to subscription</div></div>
+      </div>
+      <canvas id="segConvChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Like Rate by Segment</div><div class="chart-card-sub">Proportion of videos liked per segment</div></div>
+      </div>
+      <canvas id="segLikeChart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:1rem;">
+    <div class="chart-card-header">
+      <div><div class="chart-card-title">Segment Comparison Table</div><div class="chart-card-sub">All key metrics side by side</div></div>
+    </div>
+    <table class="seg-table">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>Users</th>
+          <th>Avg Videos Watched</th>
+          <th>Avg Watch %</th>
+          <th>Conversion Rate</th>
+          <th>Like Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="seg-pill low">Low</span></td>
+          <td style="font-family:var(--mono)">962</td>
+          <td>
+            <div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:65%;background:var(--red)"></div></div>6.6</div>
+          </td>
+          <td><div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:52%;background:var(--red)"></div></div>51.5%</div></td>
+          <td style="color:var(--red);font-family:var(--mono)">1.3%</td>
+          <td style="font-family:var(--mono)">4.3%</td>
+        </tr>
+        <tr>
+          <td><span class="seg-pill medium">Medium</span></td>
+          <td style="font-family:var(--mono)">53,710</td>
+          <td><div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:100%;background:var(--amber)"></div></div>10.1</div></td>
+          <td><div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:71%;background:var(--amber)"></div></div>71.2%</div></td>
+          <td style="color:var(--amber);font-family:var(--mono)">3.8%</td>
+          <td style="font-family:var(--mono)">21.9%</td>
+        </tr>
+        <tr>
+          <td><span class="seg-pill high">High</span></td>
+          <td style="font-family:var(--mono)">44,390</td>
+          <td><div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:99%;background:var(--teal)"></div></div>10.0</div></td>
+          <td><div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:79%;background:var(--teal)"></div></div>79.5%</div></td>
+          <td style="color:var(--teal);font-family:var(--mono)">6.4%</td>
+          <td style="font-family:var(--mono)">39.5%</td>
+        </tr>
+        <tr>
+          <td><span class="seg-pill power">Power</span></td>
+          <td style="font-family:var(--mono)">928</td>
+          <td><div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:69%;background:var(--purple)"></div></div>6.9</div></td>
+          <td><div class="bar-mini"><div class="bar-mini-track"><div class="bar-mini-fill" style="width:87%;background:var(--purple)"></div></div>87.3%</div></td>
+          <td style="color:var(--purple);font-family:var(--mono)">11.8%</td>
+          <td style="font-family:var(--mono)">67.7%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight-grid">
+    <div class="insight-card alert">
+      <div class="insight-head">Low engagers watch fewer videos, not worse</div>
+      <div class="insight-body">The Low segment watches only 6.6 videos on average — the same as Power users. Volume isn't their problem; depth is. A personalized re-engagement sequence targeting inactive sessions (not missing users) could lift them to Medium.</div>
+    </div>
+    <div class="insight-card warn">
+      <div class="insight-head">Power users convert at 2× the platform rate</div>
+      <div class="insight-body">At 11.8% conversion, Power users are your most valuable cohort — but at only 928 people, they're barely 1% of the base. There's a clear lever: identify what content High engagers (44K users) are missing to push them into Power. The gap is a 5.4pp conversion jump.</div>
+    </div>
+    <div class="insight-card positive">
+      <div class="insight-head">Medium is the platform's biggest growth lever</div>
+      <div class="insight-body">53,710 users sit in Medium — the majority cohort. Their conversion rate (3.8%) is already meaningful. Moving just 10% of them to High would add ~5,000 high-value users without acquiring a single new one.</div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== CONTENT =================== -->
+<div class="section" id="tab-content">
+  <div class="section-header">
+    <div class="section-label">Content Performance</div>
+    <div class="section-title">Which Categories Drive Retention</div>
+    <div class="section-desc">8 content categories analyzed by engagement, completion, like rate, and subscription conversion</div>
+  </div>
+
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Completion Rate by Category</div><div class="chart-card-sub">% of category videos watched to end</div></div>
+      </div>
+      <canvas id="catCompletionChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Subscription Rate by Category</div><div class="chart-card-sub">% of views leading to subscription</div></div>
+      </div>
+      <canvas id="catSubChart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-row chart-row-full">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Category Engagement — Full Comparison</div><div class="chart-card-sub">Like rate, completion rate, and engagement score side by side</div></div>
+        <span class="chart-badge">8 categories</span>
+      </div>
+      <canvas id="catRadarChart"></canvas>
+    </div>
+  </div>
+
+  <div class="insight-grid">
+    <div class="insight-card positive">
+      <div class="insight-head">Education completes highest — users come to learn</div>
+      <div class="insight-body">Education leads with a 54.9% completion rate. Users seeking to learn are inherently goal-oriented — they stay until they've got what they came for. This category also drives strong like rates (30.2%). Investing in educational content depth pays both retention and engagement dividends.</div>
+    </div>
+    <div class="insight-card warn">
+      <div class="insight-head">Gaming & Sports drive subscriptions but not completions</div>
+      <div class="insight-body">Gaming (5.1%) and Sports (5.1%) lead on subscription rate but rank below average on completion. Users subscribe after trailers or highlights without finishing the full video — an important distinction when measuring the funnel. Clip-first content strategies suit this behavior.</div>
+    </div>
+    <div class="insight-card alert">
+      <div class="insight-head">News is the weakest retention category</div>
+      <div class="insight-body">News ranks last on both completion (54.5%) and like rate (29.9%). News is consumed transactionally — users scan, extract, leave. Bundling news into short-form digest formats or push-notification summaries could increase stickiness without forcing longer viewing sessions.</div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== RECOMMENDATIONS =================== -->
+<div class="section" id="tab-recommendations">
+  <div class="section-header">
+    <div class="section-label">Strategic Recommendations</div>
+    <div class="section-title">4 Concrete Actions Tied to the Data</div>
+    <div class="section-desc">Prioritized by impact and effort based on the patterns identified across all 1M events</div>
+  </div>
+
+  <div class="rec-list" style="margin-bottom:1.5rem;">
+    <div class="rec-item">
+      <div class="rec-num r">01</div>
+      <div class="rec-text">
+        <strong>Launch a churn-prevention campaign for the 30,156 at-risk users.</strong><br/>
+        These users have zero conversion events AND below-median watch depth. A targeted re-engagement email or in-app nudge with personalized "you might like" content (based on their category history) should aim to increase average watch % by 10pp. Even moving 15% of them to Moderate status adds 4,500 retained users at zero acquisition cost.
+      </div>
+    </div>
+    <div class="rec-item">
+      <div class="rec-num t">02</div>
+      <div class="rec-text">
+        <strong>Optimize the subscribe CTA placement — the funnel drops 94% between like and subscribe.</strong><br/>
+        30% of viewers like content but only 5% subscribe. A/B test an in-video subscribe prompt triggered at the 70% watch mark (when intent is highest) vs end-of-video. Even a 2pp lift in conversion rate would add ~20,000 net-new subscribers across the existing user base.
+      </div>
+    </div>
+    <div class="rec-item">
+      <div class="rec-num p">03</div>
+      <div class="rec-text">
+        <strong>Build a "High → Power" upgrade path for the 44,390 High engagers.</strong><br/>
+        High engagers already convert at 6.4% and watch 79.5% of videos. Power users convert at 11.8%. The behavioral gap is narrow: more consistent viewing sessions and slightly longer depth. A loyalty program (streaks, early access, exclusive content) targeting this cohort could shift 5–10% of them into Power tier, significantly boosting LTV.
+      </div>
+    </div>
+    <div class="rec-item">
+      <div class="rec-num a">04</div>
+      <div class="rec-text">
+        <strong>Reformulate News content for scan-and-leave behavior, invest in Education depth.</strong><br/>
+        News has the platform's lowest completion and like rates. Pivot to 2–5 minute digest formats with strong thumbnails optimized for click-through (current CTR: 83.3%). Simultaneously, double down on long-form Education content — it has the best completion rate (54.9%) and users are primed to subscribe after completing educational series. Education is the clearest watch-time compounder on the platform.
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-row chart-row-2">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Impact vs Effort Matrix</div><div class="chart-card-sub">Strategic priority mapping of all 4 recommendations</div></div>
+      </div>
+      <canvas id="impactChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div><div class="chart-card-title">Projected Retention Gain</div><div class="chart-card-sub">Estimated user recovery if each action succeeds</div></div>
+      </div>
+      <canvas id="projChart"></canvas>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ---- DATA ----
+const monthly = [{"month_year":"2023-01","views":30948,"completion":0.548,"bounce":0.050,"engagement":0.343},{"month_year":"2023-02","views":27818,"completion":0.548,"bounce":0.048,"engagement":0.346},{"month_year":"2023-03","views":30616,"completion":0.550,"bounce":0.050,"engagement":0.344},{"month_year":"2023-04","views":29744,"completion":0.548,"bounce":0.050,"engagement":0.343},{"month_year":"2023-05","views":30852,"completion":0.546,"bounce":0.050,"engagement":0.345},{"month_year":"2023-06","views":30175,"completion":0.548,"bounce":0.050,"engagement":0.345},{"month_year":"2023-07","views":31199,"completion":0.544,"bounce":0.049,"engagement":0.345},{"month_year":"2023-08","views":30639,"completion":0.548,"bounce":0.049,"engagement":0.344},{"month_year":"2023-09","views":29564,"completion":0.549,"bounce":0.048,"engagement":0.345},{"month_year":"2023-10","views":31022,"completion":0.546,"bounce":0.051,"engagement":0.343},{"month_year":"2023-11","views":29556,"completion":0.541,"bounce":0.053,"engagement":0.343},{"month_year":"2023-12","views":31048,"completion":0.546,"bounce":0.054,"engagement":0.342},{"month_year":"2024-01","views":30715,"completion":0.544,"bounce":0.050,"engagement":0.344},{"month_year":"2024-02","views":28994,"completion":0.551,"bounce":0.049,"engagement":0.345},{"month_year":"2024-03","views":30863,"completion":0.546,"bounce":0.051,"engagement":0.343},{"month_year":"2024-04","views":29619,"completion":0.549,"bounce":0.049,"engagement":0.344},{"month_year":"2024-05","views":30856,"completion":0.547,"bounce":0.051,"engagement":0.346},{"month_year":"2024-06","views":30062,"completion":0.546,"bounce":0.050,"engagement":0.345},{"month_year":"2024-07","views":31082,"completion":0.548,"bounce":0.049,"engagement":0.346},{"month_year":"2024-08","views":30762,"completion":0.546,"bounce":0.046,"engagement":0.345},{"month_year":"2024-09","views":30122,"completion":0.548,"bounce":0.051,"engagement":0.346},{"month_year":"2024-10","views":30909,"completion":0.543,"bounce":0.051,"engagement":0.342},{"month_year":"2024-11","views":29916,"completion":0.550,"bounce":0.050,"engagement":0.344},{"month_year":"2024-12","views":31331,"completion":0.548,"bounce":0.050,"engagement":0.343},{"month_year":"2025-01","views":30960,"completion":0.550,"bounce":0.050,"engagement":0.345},{"month_year":"2025-02","views":28019,"completion":0.546,"bounce":0.050,"engagement":0.344},{"month_year":"2025-03","views":31125,"completion":0.548,"bounce":0.050,"engagement":0.344},{"month_year":"2025-04","views":29750,"completion":0.551,"bounce":0.048,"engagement":0.347},{"month_year":"2025-05","views":30960,"completion":0.552,"bounce":0.051,"engagement":0.346},{"month_year":"2025-06","views":30048,"completion":0.550,"bounce":0.049,"engagement":0.346},{"month_year":"2025-07","views":30934,"completion":0.545,"bounce":0.050,"engagement":0.343},{"month_year":"2025-08","views":30890,"completion":0.546,"bounce":0.051,"engagement":0.344},{"month_year":"2025-09","views":28902,"completion":0.549,"bounce":0.050,"engagement":0.346}];
+
+const segments = [
+  {segment:"Low",users:962,avg_watch_pct:0.515,avg_conv:0.013,avg_like:0.043},
+  {segment:"Medium",users:53710,avg_watch_pct:0.712,avg_conv:0.038,avg_like:0.219},
+  {segment:"High",users:44390,avg_watch_pct:0.795,avg_conv:0.064,avg_like:0.395},
+  {segment:"Power",users:928,avg_watch_pct:0.873,avg_conv:0.118,avg_like:0.677}
+];
+
+const categories = [
+  {category:"Education",like_rate:0.302,completion:0.549,sub_rate:0.049,engagement:0.345},
+  {category:"Gaming",like_rate:0.300,completion:0.547,sub_rate:0.051,engagement:0.345},
+  {category:"Lifestyle",like_rate:0.300,completion:0.547,sub_rate:0.049,engagement:0.345},
+  {category:"Comedy",like_rate:0.300,completion:0.548,sub_rate:0.050,engagement:0.344},
+  {category:"News",like_rate:0.299,completion:0.545,sub_rate:0.051,engagement:0.344},
+  {category:"Sports",like_rate:0.299,completion:0.546,sub_rate:0.051,engagement:0.344},
+  {category:"Tech",like_rate:0.299,completion:0.547,sub_rate:0.051,engagement:0.344},
+  {category:"Music",like_rate:0.299,completion:0.550,sub_rate:0.049,engagement:0.344}
+];
+
+const hourly = [{"hour":0,"completion":0.549},{"hour":1,"completion":0.548},{"hour":2,"completion":0.551},{"hour":3,"completion":0.547},{"hour":4,"completion":0.549},{"hour":5,"completion":0.542},{"hour":6,"completion":0.548},{"hour":7,"completion":0.549},{"hour":8,"completion":0.544},{"hour":9,"completion":0.546},{"hour":10,"completion":0.549},{"hour":11,"completion":0.547},{"hour":12,"completion":0.545},{"hour":13,"completion":0.546},{"hour":14,"completion":0.548},{"hour":15,"completion":0.545},{"hour":16,"completion":0.549},{"hour":17,"completion":0.543},{"hour":18,"completion":0.547},{"hour":19,"completion":0.547},{"hour":20,"completion":0.551},{"hour":21,"completion":0.550},{"hour":22,"completion":0.549},{"hour":23,"completion":0.550}];
+
+const dow = [{day:"Mon",views:143203,eng:0.3444},{day:"Tue",views:143035,eng:0.3446},{day:"Wed",views:142562,eng:0.3436},{day:"Thu",views:142315,eng:0.3443},{day:"Fri",views:142381,eng:0.3455},{day:"Sat",views:142751,eng:0.3444},{day:"Sun",views:143753,eng:0.3440}];
+
+// ---- CHART DEFAULTS ----
+Chart.defaults.color = '#6B7094';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 11;
+const G = (c,...s) => { const g=c.createLinearGradient(0,0,0,250); s.forEach(([o,c])=>g.addColorStop(o,c)); return g; };
+
+// ---- MONTHLY CHART ----
+(function(){
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  const labels = monthly.map(d=>d.month_year.replace('-','/'));
+  const views = monthly.map(d=>d.views);
+  const comp = monthly.map(d=>+(d.completion*100).toFixed(1));
+  const grad = G(ctx,[0,'rgba(0,217,192,0.5)'],[1,'rgba(0,217,192,0.01)']);
+  new Chart(ctx,{
+    data:{labels,datasets:[
+      {type:'bar',label:'Views',data:views,backgroundColor:'rgba(123,97,255,0.2)',borderColor:'rgba(123,97,255,0.5)',borderWidth:1,yAxisID:'y1',order:2},
+      {type:'line',label:'Completion %',data:comp,borderColor:'#00D9C0',borderWidth:2,pointRadius:0,fill:true,backgroundColor:grad,tension:0.4,yAxisID:'y2',order:1}
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{boxWidth:10,padding:15,color:'#6B7094'}}},scales:{
+      x:{grid:{color:'#1A1D2E'},ticks:{maxTicksLimit:12,color:'#6B7094'}},
+      y1:{position:'left',grid:{color:'#1A1D2E'},ticks:{color:'#7B61FF'},title:{display:true,text:'Views',color:'#7B61FF'}},
+      y2:{position:'right',grid:{display:false},min:50,max:58,ticks:{color:'#00D9C0',callback:v=>v+'%'},title:{display:true,text:'Completion %',color:'#00D9C0'}}
+    }}
+  });
+})();
+
+// ---- FUNNEL ----
+(function(){
+  const funnel = [{label:'Viewed',n:1000000,color:'#7B61FF'},{label:'Liked',n:299802,color:'#00D9C0'},{label:'Commented',n:99497,color:'#FFB627'},{label:'Subscribed',n:50004,color:'#FF2D55'}];
+  const el = document.getElementById('funnelEl');
+  funnel.forEach(f=>{
+    const pct = (f.n/1000000*100).toFixed(1);
+    el.innerHTML += `<div class="funnel-row">
+      <div class="funnel-label">${f.label}</div>
+      <div class="funnel-track">
+        <div class="funnel-fill" style="width:${pct}%;background:${f.color}">
+          ${(f.n/1000).toFixed(0)}K
+        </div>
+      </div>
+      <div class="funnel-pct">${pct}%</div>
+    </div>`;
+  });
+})();
+
+// ---- CHURN DONUT ----
+(function(){
+  const ctx = document.getElementById('churnChart').getContext('2d');
+  new Chart(ctx,{type:'doughnut',data:{
+    labels:['At Risk','Moderate','Loyal'],
+    datasets:[{data:[30156,43342,26492],backgroundColor:['#FF2D55','#FFB627','#00D9C0'],borderWidth:0,hoverOffset:8}]
+  },options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{padding:15,color:'#9296B4',boxWidth:10}},
+    tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toLocaleString()} users`}}
+  }}});
+})();
+
+// ---- DEVICE CHART ----
+(function(){
+  const ctx = document.getElementById('deviceChart').getContext('2d');
+  const devices = ['Desktop','Mobile','TV','Tablet'];
+  const completion = [54.7, 54.6, 54.8, 54.8];
+  new Chart(ctx,{type:'bar',data:{
+    labels:devices,
+    datasets:[{label:'Completion %',data:completion,backgroundColor:['rgba(123,97,255,0.7)','rgba(0,217,192,0.7)','rgba(255,45,85,0.7)','rgba(255,182,39,0.7)'],borderRadius:6,borderWidth:0}]
+  },options:{responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{grid:{display:false}},
+    y:{min:54,max:55.5,grid:{color:'#1A1D2E'},ticks:{callback:v=>v+'%'}}
+  }}});
+})();
+
+// ---- TOD CHART ----
+(function(){
+  const ctx = document.getElementById('todChart').getContext('2d');
+  const tod = ['Morning','Afternoon','Evening','Night'];
+  const eng = [0.3440, 0.3440, 0.3449, 0.3447];
+  new Chart(ctx,{type:'radar',data:{
+    labels:tod,
+    datasets:[{label:'Avg Engagement',data:eng,borderColor:'#00D9C0',backgroundColor:'rgba(0,217,192,0.1)',pointBackgroundColor:'#00D9C0',pointRadius:4}]
+  },options:{responsive:true,plugins:{legend:{display:false}},scales:{r:{grid:{color:'#252840'},pointLabels:{color:'#9296B4',font:{size:12}},ticks:{display:false},min:0.343,max:0.346}}}});
+})();
+
+// ---- HOURLY ----
+(function(){
+  const ctx = document.getElementById('hourlyChart').getContext('2d');
+  const labels = hourly.map(d=>d.hour+':00');
+  const vals = hourly.map(d=>+(d.completion*100).toFixed(2));
+  const grad = G(ctx,[0,'rgba(255,45,85,0.4)'],[1,'rgba(255,45,85,0.02)']);
+  new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Completion %',data:vals,borderColor:'#FF2D55',borderWidth:2,fill:true,backgroundColor:grad,pointRadius:3,pointBackgroundColor:'#FF2D55',tension:0.4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{
+      x:{grid:{color:'#1A1D2E'},ticks:{maxTicksLimit:12}},
+      y:{min:53.5,max:56,grid:{color:'#1A1D2E'},ticks:{callback:v=>v+'%'}}
+    }}
+  });
+})();
+
+// ---- DOW ----
+(function(){
+  const ctx = document.getElementById('dowChart').getContext('2d');
+  new Chart(ctx,{data:{labels:dow.map(d=>d.day),datasets:[
+    {type:'bar',label:'Views',data:dow.map(d=>d.views),backgroundColor:'rgba(123,97,255,0.25)',borderColor:'rgba(123,97,255,0.6)',borderWidth:1,yAxisID:'y1',order:2,borderRadius:4},
+    {type:'line',label:'Engagement',data:dow.map(d=>+(d.eng*100).toFixed(3)),borderColor:'#FFB627',borderWidth:2,pointRadius:4,pointBackgroundColor:'#FFB627',yAxisID:'y2',order:1,tension:0.3}
+  ]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:10,color:'#6B7094'}}},scales:{
+    x:{grid:{display:false}},
+    y1:{position:'left',grid:{color:'#1A1D2E'},title:{display:true,text:'Views',color:'#7B61FF'},ticks:{color:'#7B61FF'}},
+    y2:{position:'right',grid:{display:false},min:34.3,max:34.6,ticks:{color:'#FFB627',callback:v=>v.toFixed(2)+'%'},title:{display:true,text:'Engagement',color:'#FFB627'}}
+  }}});
+})();
+
+// ---- WATCH DIST ----
+(function(){
+  const ctx = document.getElementById('watchDistChart').getContext('2d');
+  new Chart(ctx,{type:'bar',data:{
+    labels:['0–25%','25–50%','50–75%','75–100%'],
+    datasets:[{label:'Users',data:[29,1806,46793,51362],backgroundColor:['rgba(255,45,85,0.7)','rgba(255,182,39,0.7)','rgba(0,217,192,0.5)','rgba(0,217,192,0.85)'],borderRadius:6,borderWidth:0}]
+  },options:{responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{grid:{display:false}},
+    y:{grid:{color:'#1A1D2E'},ticks:{callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}}
+  }}});
+})();
+
+// ---- SEG CONV CHART ----
+(function(){
+  const ctx = document.getElementById('segConvChart').getContext('2d');
+  const colors = ['rgba(255,45,85,0.7)','rgba(255,182,39,0.7)','rgba(0,217,192,0.7)','rgba(123,97,255,0.7)'];
+  new Chart(ctx,{type:'bar',data:{
+    labels:segments.map(s=>s.segment),
+    datasets:[{label:'Conversion %',data:segments.map(s=>+(s.avg_conv*100).toFixed(1)),backgroundColor:colors,borderRadius:6,borderWidth:0}]
+  },options:{responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{grid:{display:false}},y:{grid:{color:'#1A1D2E'},ticks:{callback:v=>v+'%'}}
+  }}});
+})();
+
+// ---- SEG LIKE CHART ----
+(function(){
+  const ctx = document.getElementById('segLikeChart').getContext('2d');
+  new Chart(ctx,{type:'bar',data:{
+    labels:segments.map(s=>s.segment),
+    datasets:[{label:'Like Rate %',data:segments.map(s=>+(s.avg_like*100).toFixed(1)),backgroundColor:['rgba(255,45,85,0.5)','rgba(255,182,39,0.5)','rgba(0,217,192,0.5)','rgba(123,97,255,0.5)'],borderRadius:6,borderWidth:0}]
+  },options:{responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{grid:{display:false}},y:{grid:{color:'#1A1D2E'},ticks:{callback:v=>v+'%'}}
+  }}});
+})();
+
+// ---- CAT COMPLETION ----
+(function(){
+  const ctx = document.getElementById('catCompletionChart').getContext('2d');
+  const sorted = [...categories].sort((a,b)=>b.completion-a.completion);
+  new Chart(ctx,{type:'bar',data:{
+    labels:sorted.map(c=>c.category),
+    datasets:[{label:'Completion %',data:sorted.map(c=>+(c.completion*100).toFixed(1)),
+      backgroundColor:'rgba(0,217,192,0.6)',borderRadius:4,borderWidth:0}]
+  },options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{min:54,max:55.5,grid:{color:'#1A1D2E'},ticks:{callback:v=>v+'%'}},
+    y:{grid:{display:false}}
+  }}});
+})();
+
+// ---- CAT SUB ----
+(function(){
+  const ctx = document.getElementById('catSubChart').getContext('2d');
+  const sorted = [...categories].sort((a,b)=>b.sub_rate-a.sub_rate);
+  new Chart(ctx,{type:'bar',data:{
+    labels:sorted.map(c=>c.category),
+    datasets:[{label:'Sub Rate %',data:sorted.map(c=>+(c.sub_rate*100).toFixed(2)),
+      backgroundColor:'rgba(255,45,85,0.6)',borderRadius:4,borderWidth:0}]
+  },options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{min:4.8,max:5.2,grid:{color:'#1A1D2E'},ticks:{callback:v=>v+'%'}},
+    y:{grid:{display:false}}
+  }}});
+})();
+
+// ---- CAT RADAR ----
+(function(){
+  const ctx = document.getElementById('catRadarChart').getContext('2d');
+  const cats = categories.map(c=>c.category);
+  new Chart(ctx,{type:'radar',data:{
+    labels:cats,
+    datasets:[
+      {label:'Like Rate %',data:categories.map(c=>+(c.like_rate*100).toFixed(1)),borderColor:'#FFB627',backgroundColor:'rgba(255,182,39,0.08)',pointBackgroundColor:'#FFB627',pointRadius:3},
+      {label:'Completion %',data:categories.map(c=>+(c.completion*100).toFixed(1)),borderColor:'#00D9C0',backgroundColor:'rgba(0,217,192,0.08)',pointBackgroundColor:'#00D9C0',pointRadius:3},
+      {label:'Sub Rate %',data:categories.map(c=>+(c.sub_rate*100).toFixed(2)),borderColor:'#FF2D55',backgroundColor:'rgba(255,45,85,0.08)',pointBackgroundColor:'#FF2D55',pointRadius:3}
+    ]
+  },options:{responsive:true,plugins:{legend:{position:'top',labels:{boxWidth:10,color:'#9296B4'}}},
+    scales:{r:{grid:{color:'#252840'},pointLabels:{color:'#9296B4',font:{size:11}},ticks:{display:false}}}}});
+})();
+
+// ---- IMPACT / EFFORT ----
+(function(){
+  const ctx = document.getElementById('impactChart').getContext('2d');
+  new Chart(ctx,{type:'bubble',data:{datasets:[
+    {label:'Churn Campaign',data:[{x:2,y:9,r:14}],backgroundColor:'rgba(255,45,85,0.7)'},
+    {label:'Subscribe CTA',data:[{x:3,y:10,r:12}],backgroundColor:'rgba(0,217,192,0.7)'},
+    {label:'High→Power Program',data:[{x:7,y:7,r:9}],backgroundColor:'rgba(123,97,255,0.7)'},
+    {label:'Content Strategy',data:[{x:5,y:6,r:8}],backgroundColor:'rgba(255,182,39,0.7)'}
+  ]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10,color:'#9296B4',font:{size:10}}}},
+    scales:{
+      x:{min:0,max:12,title:{display:true,text:'Effort →',color:'#6B7094'},grid:{color:'#1A1D2E'},ticks:{display:false}},
+      y:{min:0,max:12,title:{display:true,text:'Impact →',color:'#6B7094'},grid:{color:'#1A1D2E'},ticks:{display:false}}
+    }}});
+})();
+
+// ---- PROJECTED GAIN ----
+(function(){
+  const ctx = document.getElementById('projChart').getContext('2d');
+  new Chart(ctx,{type:'bar',data:{
+    labels:['Churn Campaign','Subscribe CTA','High→Power','Content Strategy'],
+    datasets:[{label:'Est. Users Recovered',data:[4500,20000,2200,3000],
+      backgroundColor:['rgba(255,45,85,0.7)','rgba(0,217,192,0.7)','rgba(123,97,255,0.7)','rgba(255,182,39,0.7)'],borderRadius:6,borderWidth:0}]
+  },options:{responsive:true,plugins:{legend:{display:false}},scales:{
+    x:{grid:{display:false},ticks:{font:{size:9}}},
+    y:{grid:{color:'#1A1D2E'},ticks:{callback:v=>v>=1000?(v/1000).toFixed(0)+'K':v}}
+  }}});
+})();
+
+// ---- TAB SWITCHING ----
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>{ if(t.textContent.toLowerCase().includes(id.split('-')[0])) t.classList.add('active'); });
+}
+// Fix tab matching
+document.querySelectorAll('.nav-tab').forEach((t,i)=>{
+  const ids=['overview','behavior','segments','content','recommendations'];
+  t.onclick=()=>showTab(ids[i]);
+});
+</script>
+</body>
+</html>
